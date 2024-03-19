@@ -219,3 +219,4 @@ app_license = "mit"
 # auth_hooks = [
 #	"invoice_sync.auth.validate"
 # ]
+fixtures = [ {"dt": "Custom Field","filters": [["module", "=", "Invoice Sync"]] }]
