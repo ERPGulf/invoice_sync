@@ -141,7 +141,7 @@ def customer(customer, customer_type, phone, email,is_supplier=False):
                             }
                         
                         
-                            return  Response(json.dumps({"data":data}), status=200, mimetype='application/json')
+                            return  Response(json.dumps({"data":data}), status=409, mimetype='application/json')
 
                     else:
                         suplr_already_exist=frappe.get_all("Supplier", fields=["name as id", "supplier_name", "custom_email as email", "custom_mobileno as phone"],
@@ -175,7 +175,11 @@ def customer(customer, customer_type, phone, email,is_supplier=False):
 @frappe.whitelist()
 def create_invoice(customer_id, supplier_id, payment_method, items):
     invoice_items = []
-
+    company = frappe.defaults.get_defaults().company
+    doc=frappe.get_doc("Company",company)
+    
+    income_account =doc.default_income_account
+    # return income_account
     for item in items:
         item_code = item["item_name"]
 
@@ -187,7 +191,7 @@ def create_invoice(customer_id, supplier_id, payment_method, items):
                 "qty": item.get("quantity", 0),
                 "rate": item.get("rate", 0),
                 "uom": item.get("uom", "Nos"), 
-                "income_account": item.get("income_account", "Sales - erp")  
+                "income_account": item.get("income_account",income_account)  
             }
         else:
             invoice_item = {
