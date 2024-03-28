@@ -174,75 +174,83 @@ def customer(customer, customer_type, phone, email,is_supplier=False):
 
 @frappe.whitelist()
 def create_invoice(customer_id, supplier_id, payment_method, items):
-    invoice_items = []
-    company = frappe.defaults.get_defaults().company
-    doc=frappe.get_doc("Company",company)
-    
-    income_account =doc.default_income_account
-    # return income_account
-    for item in items:
-        item_code = item["item_name"]
+            customer_details = frappe.get_all("Customer", fields=["name"],filters={'name': ['like',customer_id]})
+            if not customer_details:
+                return  Response(json.dumps({"data":" customer id not found"}), status=404, mimetype='application/json')
+            
+            supplier_details = frappe.get_all("Supplier", fields=["name"],filters={'name': ['like', supplier_id]})
+            if not supplier_details:
+                return  Response(json.dumps({"data":"supplier id not found"}), status=404, mimetype='application/json')
+                
+            invoice_items = []
+            company = frappe.defaults.get_defaults().company
+            doc=frappe.get_doc("Company",company)
+            
+            income_account =doc.default_income_account
+            # return income_account
+            for item in items:
+                item_code = item["item_name"]
 
-        item_exists = frappe.get_value("Item", {"name": item_code}, "name")
+                item_exists = frappe.get_value("Item", {"name": item_code}, "name")
 
-        if not item_exists:
-            invoice_item = {
-                "item_name": item_code,
-                "qty": item.get("quantity", 0),
-                "rate": item.get("rate", 0),
-                "uom": item.get("uom", "Nos"), 
-                "income_account": item.get("income_account",income_account)  
+                if not item_exists:
+                    invoice_item = {
+                        "item_name": item_code,
+                        "qty": item.get("quantity", 0),
+                        "rate": item.get("rate", 0),
+                        "uom": item.get("uom", "Nos"), 
+                        "income_account": item.get("income_account",income_account)  
+                    }
+                else:
+                    invoice_item = {
+                        "item_code": item_code,
+                        "qty": item.get("quantity", 0),
+                        "rate": item.get("rate", 0),
+                    
+                    }
+
+                invoice_items.append(invoice_item)
+
+            new_invoice = frappe.get_doc({
+                "doctype": "Sales Invoice",
+                "customer": customer_id,
+                "custom_supplier_id": supplier_id,
+                "custom_payment_method": payment_method,
+                "items": invoice_items
+            })
+
+            new_invoice.insert(ignore_permissions=True)
+            new_invoice.save()
+            iitem = frappe.get_doc("Sales Invoice", new_invoice.name)
+
+            attribute_dict = []
+            for attribute in iitem.items:
+                attribute_data = {
+                    "item_name": attribute.item_name,
+                    "item_code": attribute.item_code,
+                    "quantity": attribute.qty,
+                    "rate": attribute.rate,
+                    "uom": attribute.uom,
+                    "income_account": attribute.income_account
+                }
+                attribute_dict.append(attribute_data)
+
+            customer_info = {
+                "id": new_invoice.name,
+                "customer_id": new_invoice.customer,
+                "customer_name": new_invoice.customer_name,
+                "supplier_id": new_invoice.custom_supplier_id,
+                "payment_method": new_invoice.custom_payment_method,
+                "total_quantity": new_invoice.total_qty,
+                "total": new_invoice.total,
+                "grand_total": new_invoice.grand_total,
+                "items": attribute_dict
             }
-        else:
-            invoice_item = {
-                "item_code": item_code,
-                "qty": item.get("quantity", 0),
-                "rate": item.get("rate", 0),
-               
-            }
 
-        invoice_items.append(invoice_item)
-
-    new_invoice = frappe.get_doc({
-        "doctype": "Sales Invoice",
-        "customer": customer_id,
-        "custom_supplier_id": supplier_id,
-        "custom_payment_method": payment_method,
-        "items": invoice_items
-    })
-
-    new_invoice.insert(ignore_permissions=True)
-    new_invoice.save()
-    iitem = frappe.get_doc("Sales Invoice", new_invoice.name)
-
-    attribute_dict = []
-    for attribute in iitem.items:
-        attribute_data = {
-            "item_name": attribute.item_name,
-            "item_code": attribute.item_code,
-            "quantity": attribute.qty,
-            "rate": attribute.rate,
-            "uom": attribute.uom,
-            "income_account": attribute.income_account
-        }
-        attribute_dict.append(attribute_data)
-
-    customer_info = {
-        "id": new_invoice.name,
-        "customer_id": new_invoice.customer,
-        "customer_name": new_invoice.customer_name,
-        "supplier_id": new_invoice.custom_supplier_id,
-        "payment_method": new_invoice.custom_payment_method,
-        "total_quantity": new_invoice.total_qty,
-        "total": new_invoice.total,
-        "grand_total": new_invoice.grand_total,
-        "items": attribute_dict
-    }
-
-    return  Response(json.dumps({"data":customer_info}), status=200, mimetype='application/json')
+            return  Response(json.dumps({"data":customer_info}), status=200, mimetype='application/json')
 
 
-    
+            
 
 
 @frappe.whitelist()
