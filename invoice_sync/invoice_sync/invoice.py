@@ -173,7 +173,7 @@ def customer(customer, customer_type, phone, email,is_supplier=False):
 
 
 @frappe.whitelist()
-def create_invoice(customer_id, supplier_id, payment_method, items):
+def create_invoice(customer_id, supplier_id, payment_method, items,Customer_Purchase_Order):
             customer_details = frappe.get_all("Customer", fields=["name"],filters={'name': ['like',customer_id]})
             if not customer_details:
                 return  Response(json.dumps({"data":" customer id not found"}), status=404, mimetype='application/json')
@@ -216,7 +216,8 @@ def create_invoice(customer_id, supplier_id, payment_method, items):
                 "customer": customer_id,
                 "custom_supplier_id": supplier_id,
                 "custom_payment_method": payment_method,
-                "items": invoice_items
+                "items": invoice_items,
+                "po_no":Customer_Purchase_Order
             })
 
             new_invoice.insert(ignore_permissions=True)
@@ -244,7 +245,8 @@ def create_invoice(customer_id, supplier_id, payment_method, items):
                 "total_quantity": new_invoice.total_qty,
                 "total": new_invoice.total,
                 "grand_total": new_invoice.grand_total,
-                "items": attribute_dict
+                "Customer's Purchase Order":int(new_invoice.po_no),
+                "items": attribute_dict,
             }
 
             return  Response(json.dumps({"data":customer_info}), status=200, mimetype='application/json')
