@@ -177,7 +177,7 @@ def customer1(customer, phone, email, is_supplier=False, user_id=None):
             except frappe.exceptions.PermissionError as e:
                 return Response(json.dumps({"message": "Permission error"}), status=401, mimetype='application/json')
             except Exception as e:
-                # Handle other exceptions if needed
+               
                 return Response(json.dumps({"message": str(e)}), status=500, mimetype='application/json')
 
 
@@ -292,5 +292,4 @@ def create_invoice(customer_id,discount_amount, supplier_id, payment_method, ite
             return Response(json.dumps({"data": customer_info}), status=200, mimetype='application/json')
 
         except Exception as e:
-                # Handle other exceptions if needed
                 return Response(json.dumps({"message": str(e)}), status=404, mimetype='application/json')
