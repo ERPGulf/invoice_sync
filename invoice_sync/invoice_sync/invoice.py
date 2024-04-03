@@ -169,28 +169,40 @@ def customer(customer, customer_type, phone, email,is_supplier=False):
 
                     
 
+@frappe.whitelist()
+def customer1(customer, phone, email, is_supplier=False, user_id=None):
+            try:
+                return "hello"
+
+            except frappe.exceptions.PermissionError as e:
+                return Response(json.dumps({"message": "Permission error"}), status=401, mimetype='application/json')
+            except Exception as e:
+                # Handle other exceptions if needed
+                return Response(json.dumps({"message": str(e)}), status=500, mimetype='application/json')
 
 
 
 @frappe.whitelist()
-def create_invoice(customer_id, supplier_id, payment_method, items,Customer_Purchase_Order):
-            customer_details = frappe.get_all("Customer", fields=["name"],filters={'name': ['like',customer_id]})
-            if not customer_details:
-                return  Response(json.dumps({"data":" customer id not found"}), status=404, mimetype='application/json')
-            
-            supplier_details = frappe.get_all("Supplier", fields=["name"],filters={'name': ['like', supplier_id]})
-            if not supplier_details:
-                return  Response(json.dumps({"data":"supplier id not found"}), status=404, mimetype='application/json')
-                
+def create_invoice(customer_id,discount_amount, supplier_id, payment_method, items, taxes, Customer_Purchase_Order):
+        if not taxes:
+            return Response(json.dumps({"data": "taxes information not provided"}), status=404, mimetype='application/json')
+
+        customer_details = frappe.get_all("Customer", fields=["name"], filters={'name': ['like', customer_id]})
+        if not customer_details:
+            return Response(json.dumps({"data": "customer id not found"}), status=404, mimetype='application/json')
+
+        supplier_details = frappe.get_all("Supplier", fields=["name"], filters={'name': ['like', supplier_id]})
+        if not supplier_details:
+            return Response(json.dumps({"data": "supplier id not found"}), status=404, mimetype='application/json')
+        try:
             invoice_items = []
             company = frappe.defaults.get_defaults().company
-            doc=frappe.get_doc("Company",company)
-            
-            income_account =doc.default_income_account
-            # return income_account
+            doc = frappe.get_doc("Company", company)
+
+            income_account = doc.default_income_account
+
             for item in items:
                 item_code = item["item_name"]
-
                 item_exists = frappe.get_value("Item", {"name": item_code}, "name")
 
                 if not item_exists:
@@ -198,26 +210,42 @@ def create_invoice(customer_id, supplier_id, payment_method, items,Customer_Purc
                         "item_name": item_code,
                         "qty": item.get("quantity", 0),
                         "rate": item.get("rate", 0),
-                        "uom": item.get("uom", "Nos"), 
-                        "income_account": item.get("income_account",income_account)  
+                        "uom": item.get("uom", "Nos"),
+                        "income_account": item.get("income_account", income_account)
                     }
                 else:
                     invoice_item = {
                         "item_code": item_code,
                         "qty": item.get("quantity", 0),
                         "rate": item.get("rate", 0),
-                    
                     }
 
                 invoice_items.append(invoice_item)
+
+            taxes_list = []
+            for tax in taxes:
+                charge_type = tax.get("charge_type")
+                account_head = tax.get("account_head")
+                amount = tax.get("amount")
+                description=tax.get("description")
+
+                if charge_type and account_head and amount is not None:
+                    taxes_list.append({
+                        "charge_type": charge_type,
+                        "account_head": account_head,
+                        "tax_amount": amount,
+                        "description": description
+                    })
 
             new_invoice = frappe.get_doc({
                 "doctype": "Sales Invoice",
                 "customer": customer_id,
                 "custom_supplier_id": supplier_id,
                 "custom_payment_method": payment_method,
+                "discount_amount":discount_amount,
                 "items": invoice_items,
-                "po_no":Customer_Purchase_Order
+                "taxes": taxes_list,
+                "po_no": Customer_Purchase_Order
             })
 
             new_invoice.insert(ignore_permissions=True)
@@ -235,7 +263,17 @@ def create_invoice(customer_id, supplier_id, payment_method, items,Customer_Purc
                     "income_account": attribute.income_account
                 }
                 attribute_dict.append(attribute_data)
-
+            sales_dict=[]
+            for sales in iitem.taxes:
+                sales_data={
+                    "charge_type": sales.charge_type,
+                    "account_head": sales.account_head,
+                    "tax_amount": sales.tax_amount,
+                    "total":sales.total,
+                    "description": sales.description
+                    
+                }
+                sales_dict.append(sales_data)
             customer_info = {
                 "id": new_invoice.name,
                 "customer_id": new_invoice.customer,
@@ -245,23 +283,14 @@ def create_invoice(customer_id, supplier_id, payment_method, items,Customer_Purc
                 "total_quantity": new_invoice.total_qty,
                 "total": new_invoice.total,
                 "grand_total": new_invoice.grand_total,
-                "Customer's Purchase Order":int(new_invoice.po_no),
+                "Customer's Purchase Order": int(new_invoice.po_no),
+                "discount_amount":new_invoice.discount_amount,
                 "items": attribute_dict,
+                "taxes":sales_dict
             }
 
-            return  Response(json.dumps({"data":customer_info}), status=200, mimetype='application/json')
+            return Response(json.dumps({"data": customer_info}), status=200, mimetype='application/json')
 
-
-            
-
-
-@frappe.whitelist()
-def customer1(customer, phone, email, is_supplier=False, user_id=None):
-            try:
-                return "hello"
-
-            except frappe.exceptions.PermissionError as e:
-                return Response(json.dumps({"message": "Permission error"}), status=401, mimetype='application/json')
-            except Exception as e:
+        except Exception as e:
                 # Handle other exceptions if needed
-                return Response(json.dumps({"message": str(e)}), status=500, mimetype='application/json')
+                return Response(json.dumps({"message": str(e)}), status=404, mimetype='application/json')

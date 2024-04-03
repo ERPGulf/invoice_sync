@@ -89,25 +89,32 @@ curl --location 'https://pi/method/invoice_sync.invoice_sync.invoice.customer' \
 ```
 
 ## create sales invoice
-This api is used to create sales invoice using customer id,supplier id and payment method and we can add multiple items .
-
-
-
+This API generates sales invoices by utilizing various parameters such as customer ID, supplier ID, payment method, item details, discount amounts, purchase orders, and taxes. It allows for the inclusion of multiple items, sales, taxes, and discounts within a single invoice. here we should enter valid account head field in the taxes  otherwise invoice should not be created.Authentication is necessary, with user-related parameters embedded in the request headers as cookies.
 ### Request
 
 ```
-curl --location 'https://api/method/invoice_sync.invoice_sync.invoice.create_invoice' \
+curl --location '/invoice_sync.invoice_sync.invoice.create_invoice' \
 --header 'Content-Type: application/json' \
---header 'Authorization: Bearer k' \
+--header 'Authorization: Bearer xxx' \
 --header 'Cookie: full_name=Guest; sid=Guest; system_user=no; user_id=Guest; user_image=' \
 --data '
 {
-  "customer_id":"C-00008",
-  "supplier_id":"testing17",
+  "customer_id":"C-00027",
+  "supplier_id":"testing6",
   "payment_method":"cash",
+  "Customer_Purchase_Order":12,
+  "discount_amount":10,
+  "taxes":[
+    {
+        "charge_type":"Actual","account_head":"Expenses Included In Valuation - erp","amount":200, "description":20
+    },
+    {
+        "charge_type":"Actual","account_head":"Expenses Included In Valuation - erp","amount":100, "description":20
+    }
+  ],
   "items": [
-    {"item_name": "pencil", "quantity": 5, "rate": 10.0},
-    {"item_name": "pencil1", "quantity": 3, "rate": 15.0}
+    {"item_name": "item1", "quantity": 5, "rate": 2000.0},
+    {"item_name": "item2", "quantity": 3, "rate": 1500.0}
    
   ]
 }
@@ -117,30 +124,48 @@ curl --location 'https://api/method/invoice_sync.invoice_sync.invoice.create_inv
 ```
 {
     "data": {
-        "id": "ACC-SINV-2024-00080",
-        "customer_id": "C-00008",
-        "customer_name": "testing26",
-        "supplier_id": "testing17",
+        "id": "ACC-SINV-2024-00194",
+        "customer_id": "C-00027",
+        "customer_name": "testing 40",
+        "supplier_id": "testing6",
         "payment_method": "cash",
         "total_quantity": 8.0,
-        "total": 95.0,
-        "grand_total": 95.0,
+        "total": 14500.0,
+        "grand_total": 14790.0,
+        "Customer's Purchase Order": 12,
+        "discount_amount": 10.0,
         "items": [
             {
-                "item_name": "pencil",
-                "item_code": "pencil",
+                "item_name": "item1",
+                "item_code": null,
                 "quantity": 5.0,
-                "rate": 10.0,
-                "uom": "Unit",
+                "rate": 2000.0,
+                "uom": "Nos",
                 "income_account": "Sales - erp"
             },
             {
-                "item_name": "pencil1",
+                "item_name": "item2",
                 "item_code": null,
                 "quantity": 3.0,
-                "rate": 15.0,
+                "rate": 1500.0,
                 "uom": "Nos",
                 "income_account": "Sales - erp"
+            }
+        ],
+        "taxes": [
+            {
+                "charge_type": "Actual",
+                "account_head": "Expenses Included In Valuation - erp",
+                "tax_amount": 200.0,
+                "total": 14690.0,
+                "description": "20"
+            },
+            {
+                "charge_type": "Actual",
+                "account_head": "Expenses Included In Valuation - erp",
+                "tax_amount": 100.0,
+                "total": 14790.0,
+                "description": "20"
             }
         ]
     }
