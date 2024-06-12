@@ -295,3 +295,45 @@ def create_invoice(customer_id, supplier_id, payment_method, items, taxes, Custo
                 return Response(json.dumps({"message": str(e)}), status=404, mimetype='application/json')
 
 
+@frappe.whitelist(allow_guest=True)   
+def invoice_list(id=None):
+    item = frappe.get_doc("Sales Invoice",id)
+
+    attribute_dict = []
+    for attribute in item.items:
+        attribute_data = {
+            "item_name": attribute.item_name,
+            "item_code": attribute.item_code,
+            "quantity": attribute.qty,
+            "rate": attribute.rate,
+            "uom": attribute.uom,
+            "income_account": attribute.income_account
+        }
+        attribute_dict.append(attribute_data)
+    sales_dict=[]
+    for sales in item.taxes:
+        sales_data={
+            "charge_type": sales.charge_type,
+            "account_head": sales.account_head,
+            "tax_amount": sales.tax_amount,
+            "total":sales.total,
+            "description": sales.description
+            
+        }
+        sales_dict.append(sales_data)
+    customer_info = {
+        "id": item.name,
+        "customer_id": item.customer,
+        "customer_name": item.customer_name,
+        "supplier_id": item.custom_supplier_id,
+        "payment_method": item.custom_payment_method,
+        "total_quantity": item.total_qty,
+        "total": item.total,
+        "grand_total": item.grand_total,
+        "Customer's Purchase Order": int(item.po_no),
+        "discount_amount":item.discount_amount,
+        "items": attribute_dict,
+        "taxes":sales_dict
+    }
+
+    return Response(json.dumps({"data": customer_info}), status=200, mimetype='application/json')
